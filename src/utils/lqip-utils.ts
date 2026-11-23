@@ -22,7 +22,15 @@ export function getLqipGradient(
 ): string | undefined {
 	if (isPublic) {
 		// public 图片：key 格式为 public:xxx（去掉开头的 /）
-		const relativePath = src.replace(/^\//, "");
+		// 子路径部署（base 非 /）时先剥掉 base，才能匹配生成时的 key
+		const base = (import.meta.env.BASE_URL || "/").replace(/^\/|\/$/g, "");
+		let relativePath = src.replace(/^\//, "");
+		if (
+			base &&
+			(relativePath === base || relativePath.startsWith(`${base}/`))
+		) {
+			relativePath = relativePath.slice(base.length).replace(/^\//, "");
+		}
 		const compact = lqips[`public:${relativePath}`] || lqips[relativePath];
 		if (compact?.length !== 18) return undefined;
 		const c1 = `#${compact.slice(0, 6)}`;

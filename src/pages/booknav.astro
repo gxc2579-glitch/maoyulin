@@ -4,6 +4,7 @@ import { booknavPageConfig, siteConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
+import { url } from "@/utils/url-utils";
 import "@/styles/pages/common.css";
 import {
 	getBooknavDomain,
@@ -15,7 +16,12 @@ import "@/styles/pages/booknav.css";
 
 // 检查页面是否启用
 if (!siteConfig.pages.booknav) {
-	return Astro.redirect("/404/");
+	return Astro.redirect(url("/404/"));
+}
+
+// public 目录里的本地图标需要加 base；远程图标原样保留
+function resolveBooknavImageSrc(value: string): string {
+	return value.startsWith("/") ? url(value) : value;
 }
 
 // 使用配置文件中的书签数据，按权重排序
@@ -148,7 +154,7 @@ const description =
                           )}
                           {item.resolvedIcon.kind === "image" && (
                             <img
-                              src={item.resolvedIcon.value}
+                              src={resolveBooknavImageSrc(item.resolvedIcon.value)}
                               alt={item.title}
                               loading="lazy"
                               decoding="async"

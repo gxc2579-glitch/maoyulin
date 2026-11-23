@@ -2,6 +2,7 @@ import rss, { type RSSFeedItem } from "@astrojs/rss";
 import { getSortedPosts } from "@utils/content-utils";
 import { formatDateI18nWithTime } from "@utils/date-utils";
 import { renderFeedEntries } from "@utils/feed-utils";
+import { url } from "@utils/url-utils";
 import type { APIContext } from "astro";
 import { siteConfig } from "@/config";
 import pkg from "../../package.json";
@@ -19,13 +20,14 @@ export async function GET(context: APIContext): Promise<Response> {
 		link: entry.link,
 		...(includeContent ? { content: entry.content } : {}),
 	}));
+	const site = new URL(url("/"), context.site ?? siteConfig.site_url);
 	return rss({
 		title: siteConfig.title,
 		description: siteConfig.subtitle || "No description",
-		site: context.site ?? "https://maoyulin.example.com",
+		site,
 		customData: `<templateTheme>猫羽霖</templateTheme>
 		<templateThemeVersion>${pkg.version}</templateThemeVersion>
-		<templateThemeUrl>${siteConfig.site_url || "https://maoyulin.example.com"}</templateThemeUrl>
+		<templateThemeUrl>${site.href}</templateThemeUrl>
 		<lastBuildDate>${formatDateI18nWithTime(new Date())}</lastBuildDate>`,
 		items: feedItems,
 	});

@@ -77,7 +77,9 @@ export function getSearchUrl(query: string): string {
 // 自我 canonical。分页（/2/）、文章页等无查询串的路径保持原样。
 export function getCanonicalUrl(urlObj: URL): string {
 	const pathname = urlObj.pathname;
-	if (pathname === "/archive/" || pathname === "/search/") {
+	const archivePath = url("/archive/");
+	const searchPath = url("/search/");
+	if (pathname === archivePath || pathname === searchPath) {
 		return new URL(pathname, urlObj.origin).toString();
 	}
 	return urlObj.toString();
@@ -93,8 +95,16 @@ export function url(path: string): string {
 		return path;
 	}
 
-	// 只有本地相对路径才添加BASE_URL
-	return joinUrl("", import.meta.env.BASE_URL, path);
+	// 只有本地相对路径才添加 BASE_URL；已经带 base 的路径保持原样，避免重复拼成
+	// /maoyulin/maoyulin/...（Astro 优化后的图片 URL 可能已自带 base）。
+	const base = import.meta.env.BASE_URL || "/";
+	if (base !== "/") {
+		const baseNoSlash = base.endsWith("/") ? base.slice(0, -1) : base;
+		if (path === baseNoSlash || path.startsWith(base)) {
+			return path;
+		}
+	}
+	return joinUrl("", base, path);
 }
 
 // 内容详情页路径模式：文章(/posts/、/post/) 与 项目详情(/projects/<slug>/)

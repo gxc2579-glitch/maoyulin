@@ -111,9 +111,9 @@ const search = async (keyword: string, isDesktop: boolean): Promise<void> => {
 
 			if (import.meta.env.PROD && window.pagefind) {
 				const response = await window.pagefind.search(keyword);
-				searchResults = await Promise.all(
-					response.results.map((item) => item.data()),
-				);
+				searchResults = (
+					await Promise.all(response.results.map((item) => item.data()))
+				).map((item) => ({ ...item, url: formatUrl(item.url) }));
 			} else if (import.meta.env.DEV) {
 				searchResults = fakeResult;
 			}

@@ -15,6 +15,7 @@ const categories = await getCategoryList();
 const totalPosts = (await getSortedPostsList()).length;
 const homeUrl = url("/");
 const archiveUrl = url("/archive/");
+const categoriesUrl = url("/categories/");
 
 // 服务端计算初始高亮 pill（首屏无需等 JS）。
 // 查询串筛选（?category=/?tag=/?uncategorized）在静态页构建期不可知，
@@ -23,7 +24,7 @@ const pathname = Astro.url.pathname.replace(/\/$/, "");
 const homePath = homeUrl.replace(/\/$/, "");
 const archivePath = archiveUrl.replace(/\/$/, "");
 const isHome = pathname === homePath || pathname === "" || pathname === "/";
-const isCategories = pathname === "/categories";
+const isCategories = pathname === categoriesUrl.replace(/\/$/, "");
 const isArchive = pathname === archivePath;
 const postCategory = (currentPostCategory || "").trim();
 
@@ -46,6 +47,7 @@ function initialActive(categoryName: string): {
   id="category-bar"
   data-home-path={homeUrl}
   data-archive-path={archiveUrl}
+  data-categories-path={categoriesUrl}
   data-current-post-category={currentPostCategory || ""}
 >
   <div class="category-bar-inner flex gap-2">
@@ -174,9 +176,10 @@ function initialActive(categoryName: string): {
     const pathname = currentUrl.pathname.replace(/\/$/, "");
     const homePath = (bar.getAttribute("data-home-path") || "/").replace(/\/$/, "");
     const archivePath = (bar.getAttribute("data-archive-path") || "/archive").replace(/\/$/, "");
+    const categoriesPath = (bar.getAttribute("data-categories-path") || "/categories").replace(/\/$/, "");
     const isHome = pathname === homePath || pathname === "" || pathname === "/";
     const isArchive = pathname === archivePath;
-    const isCategories = pathname === "/categories";
+    const isCategories = pathname === categoriesPath;
 
     return {
       isHome,

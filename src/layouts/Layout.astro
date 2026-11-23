@@ -138,7 +138,7 @@ let ogImageWidth: number | undefined;
 let ogImageHeight: number | undefined;
 const isGeneratedOg = siteConfig.post.generateOgImages && postSlug;
 if (isGeneratedOg) {
-	ogImageUrl = new URL(`/og/${postSlug}.png`, Astro.site).toString();
+	ogImageUrl = new URL(url(`/og/${postSlug}.png`), Astro.site).toString();
 	ogImageWidth = 1200;
 	ogImageHeight = 630;
 } else if (postCoverImage) {
@@ -498,14 +498,14 @@ const ogImageAlt = propsOgImageAlt ?? pageTitle;
       rel="alternate"
       type="application/rss+xml"
       title={profileConfig.name}
-      href={`${Astro.site}rss.xml`}
+      href={new URL(url("/rss.xml"), Astro.site).toString()}
     />
 
     <link
       rel="alternate"
       type="application/atom+xml"
       title={profileConfig.name}
-      href={`${Astro.site}atom.xml`}
+      href={new URL(url("/atom.xml"), Astro.site).toString()}
     />
 
     <!-- Font Setup (Astro Font API) -->

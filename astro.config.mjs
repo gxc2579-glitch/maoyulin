@@ -64,11 +64,17 @@ const adapter = process.env.CF_WORKERS
 		})
 	: undefined;
 
+// GitHub Pages 项目页部署在 https://<user>.github.io/<repo>/ 子路径下；
+// 本地与 Vercel/Cloudflare 仍使用根路径。
+const isGitHubPages = process.env.GITHUB_PAGES === "true";
+
 // https://astro.build/config
 export default defineConfig({
-	site: siteConfig.site_url,
+	site: isGitHubPages
+		? "https://gxc2579-glitch.github.io"
+		: siteConfig.site_url,
 
-	base: "/",
+	base: isGitHubPages ? "/maoyulin" : "/",
 	trailingSlash: "always",
 
 	// 字体配置 - 只加载实际使用的字体，跳过未引用的以加快构建
