@@ -1,0 +1,445 @@
+---
+import { maoyulinPioConfig } from "@/config/pioConfig";
+import { url } from "@/utils/url-utils";
+
+const config = maoyulinPioConfig;
+
+// 资源路径统一走 url()，确保 base path 部署下也能正确加载
+const expressionSources = {
+	idle: url(config.expressions.idle),
+	happy: url(config.expressions.happy),
+	shy: url(config.expressions.shy),
+	sleep: url(config.expressions.sleep),
+};
+
+// 传给内联脚本的运行时配置
+const clientConfig = {
+	expressions: expressionSources,
+	messages: config.messages,
+	idleMessages: config.idleMessages,
+	messageDisplayTime: config.messageDisplayTime,
+	idleInterval: config.idleInterval,
+	responsive: config.responsive,
+};
+
+const anchorStyle = `${config.position.corner === "bottom-right" ? "right" : "left"}:${config.position.offsetX}px;bottom:${config.position.offsetY}px;`;
+
+// 气泡贴着看板娘所在角落展开，避免在左下角被视口裁切
+const bubbleAnchor =
+	config.position.corner === "bottom-right"
+		? "right: 0; left: auto;"
+		: "left: 0; right: auto;";
+
+const mobileRule = config.responsive.hideOnMobile
+	? `@media (max-width: ${config.responsive.mobileBreakpoint}px) {
+	#maoyulin-pio.maoyulin-pio { display: none !important; }
+}`
+	: "";
+
+const widgetCss = `
+#maoyulin-pio.maoyulin-pio {
+	position: fixed;
+	z-index: ${config.zIndex};
+	width: ${config.size.width}px;
+	height: ${config.size.height}px;
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+	pointer-events: none;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+/* [hidden] 的 UA 规则优先级低于上面的 #id.class，必须显式隐藏 */
+#maoyulin-pio.maoyulin-pio[hidden] {
+	display: none;
+}
+
+#maoyulin-pio .maoyulin-pio__character {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	appearance: none;
+	cursor: pointer;
+	pointer-events: auto;
+	animation: maoyulin-pio-bob 4s ease-in-out infinite;
+}
+
+#maoyulin-pio .maoyulin-pio__character:focus-visible {
+	outline: 2px solid var(--primary, #60a5fa);
+	outline-offset: 4px;
+	border-radius: 16px;
+}
+
+#maoyulin-pio .maoyulin-pio__image {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	object-position: bottom center;
+	pointer-events: none;
+	-webkit-user-drag: none;
+	filter: drop-shadow(0 8px 14px rgba(15, 23, 42, 0.28));
+	transition: transform 0.25s ease;
+	transform-origin: 50% 100%;
+}
+
+#maoyulin-pio .maoyulin-pio__character:hover .maoyulin-pio__image,
+#maoyulin-pio .maoyulin-pio__character:focus-visible .maoyulin-pio__image {
+	transform: scale(1.04);
+}
+
+#maoyulin-pio .maoyulin-pio__bubble {
+	position: absolute;
+	${bubbleAnchor}
+	bottom: calc(100% - 22px);
+	z-index: 2;
+	min-width: 56px;
+	width: max-content;
+	max-width: min(230px, calc(100vw - 24px));
+	padding: 8px 12px;
+	border-radius: 14px;
+	background: var(--card-bg, rgba(255, 255, 255, 0.96));
+	color: var(--deep-text, #374151);
+	font-size: 13px;
+	line-height: 1.5;
+	text-align: center;
+	word-break: break-word;
+	box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transform: translateY(6px);
+	transition: opacity 0.24s ease, transform 0.24s ease, visibility 0.24s;
+}
+
+:root.dark #maoyulin-pio .maoyulin-pio__bubble {
+	color: #f4f7fb;
+}
+
+#maoyulin-pio .maoyulin-pio__bubble::after {
+	content: "";
+	position: absolute;
+	left: 50%;
+	bottom: -6px;
+	transform: translateX(-50%);
+	border: 6px solid transparent;
+	border-top-color: var(--card-bg, rgba(255, 255, 255, 0.96));
+	border-bottom-width: 0;
+}
+
+#maoyulin-pio .maoyulin-pio__bubble.is-visible {
+	opacity: 1;
+	visibility: visible;
+	transform: translateY(0);
+}
+
+#maoyulin-pio .maoyulin-pio__close {
+	position: absolute;
+	right: 4px;
+	bottom: 4px;
+	z-index: 3;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	padding: 0;
+	border: 0;
+	border-radius: 999px;
+	background: var(--card-bg, rgba(255, 255, 255, 0.92));
+	color: var(--deep-text, #475569);
+	box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
+	font-size: 14px;
+	line-height: 1;
+	cursor: pointer;
+	pointer-events: auto;
+	opacity: 0.72;
+	transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+#maoyulin-pio .maoyulin-pio__close:hover {
+	opacity: 1;
+	transform: scale(1.08);
+}
+
+#maoyulin-pio .maoyulin-pio__close:focus-visible {
+	opacity: 1;
+	outline: 2px solid var(--primary, #60a5fa);
+	outline-offset: 2px;
+}
+
+@keyframes maoyulin-pio-bob {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-4px);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	#maoyulin-pio .maoyulin-pio__character {
+		animation: none;
+	}
+	#maoyulin-pio .maoyulin-pio__image,
+	#maoyulin-pio .maoyulin-pio__bubble,
+	#maoyulin-pio .maoyulin-pio__close {
+		transition: none;
+	}
+	#maoyulin-pio .maoyulin-pio__character:hover .maoyulin-pio__image,
+	#maoyulin-pio .maoyulin-pio__character:focus-visible .maoyulin-pio__image {
+		transform: none;
+	}
+}
+
+${mobileRule}
+`;
+---
+
+{
+	config.enable && (
+		<>
+			<style is:inline set:html={widgetCss}></style>
+			<div
+				id="maoyulin-pio"
+				class="maoyulin-pio"
+				data-maoyulin-pio
+				data-expression="idle"
+				style={anchorStyle}
+				hidden
+			>
+				<div
+					class="maoyulin-pio__bubble"
+					role="status"
+					aria-live="polite"
+					aria-atomic="true"
+				/>
+				<button
+					type="button"
+					class="maoyulin-pio__character"
+					aria-label="猫羽霖看板娘，点击切换表情"
+				>
+					<img
+						class="maoyulin-pio__image"
+						src={expressionSources.idle}
+						alt=""
+						width={config.size.width}
+						height={config.size.height}
+						loading="lazy"
+						decoding="async"
+						draggable="false"
+					/>
+				</button>
+				<button type="button" class="maoyulin-pio__close" aria-label="隐藏猫羽霖">
+					×
+				</button>
+			</div>
+			<script is:inline define:vars={{ clientConfig }}>
+				(() => {
+					const root = document.getElementById("maoyulin-pio");
+					if (!(root instanceof HTMLElement)) return;
+					if (!root.hasAttribute("data-maoyulin-pio")) return;
+
+					const STORAGE_KEY = "maoyulin-pio-hidden";
+					const GLOBAL_KEY = "__maoyulinPioInstance";
+					const EXPRESSION_ORDER = ["idle", "happy", "shy", "sleep"];
+
+					const isDismissed = () => {
+						try {
+							return sessionStorage.getItem(STORAGE_KEY) === "1";
+						} catch {
+							return false;
+						}
+					};
+
+					// 单例：脚本被重复执行时先销毁上一个实例，避免定时器/DOM 叠加
+					const previous = window[GLOBAL_KEY];
+					if (previous && typeof previous.destroy === "function") {
+						try {
+							previous.destroy();
+						} catch {
+							// 忽略旧实例清理异常
+						}
+					}
+
+					// 清理可能存在的重复挂载节点，仅保留当前根元素
+					for (const el of document.querySelectorAll("[data-maoyulin-pio]")) {
+						if (el !== root) el.remove();
+					}
+
+					// 本次会话已手动隐藏：直接移除，Swup 切页后也不会复活
+					if (isDismissed()) {
+						root.remove();
+						return;
+					}
+
+					const trigger = root.querySelector(".maoyulin-pio__character");
+					const image = root.querySelector(".maoyulin-pio__image");
+					const bubble = root.querySelector(".maoyulin-pio__bubble");
+					const closeButton = root.querySelector(".maoyulin-pio__close");
+					if (!trigger || !image || !bubble || !closeButton) return;
+
+					const expressions = clientConfig.expressions || {};
+					const messages = Array.isArray(clientConfig.messages)
+						? clientConfig.messages
+						: [];
+					const idleMessages = Array.isArray(clientConfig.idleMessages)
+						? clientConfig.idleMessages
+						: [];
+					const displayTime =
+						Number(clientConfig.messageDisplayTime) > 0
+							? Number(clientConfig.messageDisplayTime)
+							: 3000;
+					const idleInterval =
+						Number(clientConfig.idleInterval) > 0
+							? Number(clientConfig.idleInterval)
+							: 14000;
+					const responsive = clientConfig.responsive || {};
+
+					let expressionIndex = 0;
+					let lastMessage = "";
+					let messageTimer = 0;
+					let clearTimer = 0;
+					let idleTimer = 0;
+					let destroyed = false;
+					let instance = null;
+
+					const pick = (list) => {
+						if (list.length === 0) return "";
+						if (list.length === 1) return list[0];
+						let value = list[Math.floor(Math.random() * list.length)];
+						if (value === lastMessage) {
+							value = list[(list.indexOf(value) + 1) % list.length];
+						}
+						lastMessage = value;
+						return value;
+					};
+
+					const setExpression = (name) => {
+						const src = expressions[name];
+						if (typeof src !== "string" || src === "") return;
+						if (image.getAttribute("src") !== src) {
+							image.setAttribute("src", src);
+						}
+						root.setAttribute("data-expression", name);
+					};
+
+					const showMessage = (text) => {
+						if (text === "" || destroyed) return;
+						bubble.textContent = text;
+						bubble.classList.add("is-visible");
+						window.clearTimeout(messageTimer);
+						window.clearTimeout(clearTimer);
+						messageTimer = window.setTimeout(() => {
+							bubble.classList.remove("is-visible");
+							// 等淡出结束再清空文本，避免读屏器重复播报
+							clearTimer = window.setTimeout(() => {
+								if (!bubble.classList.contains("is-visible")) {
+									bubble.textContent = "";
+								}
+							}, 320);
+						}, displayTime);
+					};
+
+					const handleTriggerClick = () => {
+						expressionIndex = (expressionIndex + 1) % EXPRESSION_ORDER.length;
+						setExpression(EXPRESSION_ORDER[expressionIndex]);
+						showMessage(pick(messages));
+					};
+
+					const handleCloseClick = (event) => {
+						event.preventDefault();
+						event.stopPropagation();
+						try {
+							sessionStorage.setItem(STORAGE_KEY, "1");
+						} catch {
+							// sessionStorage 不可用时仅隐藏本次实例
+						}
+						destroy();
+						root.remove();
+					};
+
+					// Swup 切页后：确认根节点仍在、清理重复节点、尊重会话隐藏状态
+					const handleNavigation = () => {
+						if (destroyed) return;
+						if (!root.isConnected) {
+							destroy();
+							return;
+						}
+						if (isDismissed()) {
+							destroy();
+							root.remove();
+							return;
+						}
+						for (const el of document.querySelectorAll("[data-maoyulin-pio]")) {
+							if (el !== root) el.remove();
+						}
+					};
+
+					const destroy = () => {
+						if (destroyed) return;
+						destroyed = true;
+						window.clearTimeout(messageTimer);
+						window.clearTimeout(clearTimer);
+						window.clearTimeout(idleTimer);
+						trigger.removeEventListener("click", handleTriggerClick);
+						closeButton.removeEventListener("click", handleCloseClick);
+						document.removeEventListener("swup:content:replace", handleNavigation);
+						document.removeEventListener("swup:page:view", handleNavigation);
+						if (window[GLOBAL_KEY] === instance) {
+							window[GLOBAL_KEY] = undefined;
+						}
+					};
+
+					const scheduleIdle = () => {
+						window.clearTimeout(idleTimer);
+						if (destroyed) return;
+						idleTimer = window.setTimeout(() => {
+							if (destroyed) return;
+							if (!document.hidden) showMessage(pick(idleMessages));
+							scheduleIdle();
+						}, idleInterval);
+					};
+
+					// 预加载其余表情，避免首次点击闪白（移动端隐藏时不预加载）
+					const hiddenOnMobile =
+						responsive.hideOnMobile === true &&
+						window.matchMedia(
+							`(max-width: ${Number(responsive.mobileBreakpoint) || 768}px)`,
+						).matches;
+					if (!hiddenOnMobile) {
+						for (const name of EXPRESSION_ORDER) {
+							const src = expressions[name];
+							if (typeof src === "string" && src !== "") {
+								const preload = new Image();
+								preload.src = src;
+							}
+						}
+					}
+
+					instance = { root, destroy };
+					window[GLOBAL_KEY] = instance;
+
+					trigger.addEventListener("click", handleTriggerClick);
+					closeButton.addEventListener("click", handleCloseClick);
+					document.addEventListener("swup:content:replace", handleNavigation);
+					document.addEventListener("swup:page:view", handleNavigation);
+
+					root.hidden = false;
+					setExpression("idle");
+					scheduleIdle();
+				})();
+			</script>
+		</>
+	)
+}
